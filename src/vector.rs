@@ -4,21 +4,26 @@ use crate::utils::assert;
 
 /// Helper function for asserting vector and vector data
 pub(crate) extern "C" fn assert_vector(v: *mut Vector) -> bool {
-    assert(
-        (v as *mut () != 0 as *mut () && unsafe { (*v).data } as *mut () != 0 as *mut ()) as i32,
-    );
+    assert((v as *mut () != 0 as *mut () &&
+                unsafe { (*v).data } as *mut () != 0 as *mut ()) as i32);
     return 1;
 }
 
 /// Return new vector with null data
 pub(crate) extern "C" fn null_vector(cols: i32) -> *mut Vector {
     assert((cols > 0) as i32);
-    let v: *mut Vector = unsafe { malloc(core::mem::size_of::<Vector>() as u64) } as *mut Vector;
-    unsafe { (*v).cols = cols };
+    let v: *mut Vector =
+        unsafe { malloc(core::mem::size_of::<Vector>() as u64) } as
+            *mut Vector;
     unsafe {
-        (*v).data =
-            unsafe { malloc((cols as u64).wrapping_mul(core::mem::size_of::<f64>() as u64)) }
-                as *mut f64
+        *v =
+            [_ { cols: cols },
+                    _ {
+                        data: unsafe {
+                                malloc((cols as
+                                            u64).wrapping_mul(core::mem::size_of::<f64>() as u64))
+                            } as *mut f64,
+                    }]
     };
     return v;
 }
@@ -31,28 +36,17 @@ pub(crate) extern "C" fn new_vector(d: *mut f64, cols: i32) -> *mut Vector {
     {
         let mut i: i32 = 0;
         '__b70: loop {
-            if !(i < unsafe { (*v).cols }) {
-                break '__b70;
-            }
+            if !(i < unsafe { (*v).cols }) { break '__b70; }
             '__c70: loop {
                 unsafe {
-                    *unsafe { (*v).data.offset(i as isize) } = unsafe {
-                        *d.offset({
-                            let __p = &mut idx;
-                            let __t = *__p;
-                            *__p += 1;
-                            __t
-                        } as isize)
-                    }
+                    *unsafe { (*v).data.offset(i as isize) } =
+                        unsafe {
+                            *d.offset({ let __old = idx; idx += 1; __old } as isize)
+                        }
                 };
                 break '__c70;
             }
-            {
-                let __p = &mut i;
-                let __t = *__p;
-                *__p += 1;
-                __t
-            };
+            i += 1;
         }
     }
     return v;
@@ -64,19 +58,12 @@ pub(crate) extern "C" fn fill_vector(v: &*mut Vector, n: f64) -> () {
     {
         let mut i: i32 = 0;
         '__b71: loop {
-            if !(i < unsafe { (**v).cols }) {
-                break '__b71;
-            }
+            if !(i < unsafe { (**v).cols }) { break '__b71; }
             '__c71: loop {
                 unsafe { *unsafe { (**v).data.offset(i as isize) } = n };
                 break '__c71;
             }
-            {
-                let __p = &mut i;
-                let __t = *__p;
-                *__p += 1;
-                __t
-            };
+            i += 1;
         }
     }
 }
@@ -103,9 +90,7 @@ pub(crate) extern "C" fn copy_vector(v: *mut Vector) -> *mut Vector {
     {
         let mut i: i32 = 0;
         '__b72: loop {
-            if !(i < unsafe { (*v).cols }) {
-                break '__b72;
-            }
+            if !(i < unsafe { (*v).cols }) { break '__b72; }
             '__c72: loop {
                 unsafe {
                     *unsafe { (*c).data.offset(i as isize) } =
@@ -113,12 +98,7 @@ pub(crate) extern "C" fn copy_vector(v: *mut Vector) -> *mut Vector {
                 };
                 break '__c72;
             }
-            {
-                let __p = &mut i;
-                let __t = *__p;
-                *__p += 1;
-                __t
-            };
+            i += 1;
         }
     }
     return c;
@@ -132,11 +112,13 @@ pub(crate) extern "C" fn vector_size(v: *mut Vector) -> i32 {
 
 /// Return size of vector in bytes
 pub(crate) extern "C" fn vector_size_bytes(v: *mut Vector) -> i32 {
-    return (core::mem::size_of::<f64>() as u64).wrapping_mul(vector_size(v) as u64) as i32;
+    return (core::mem::size_of::<f64>() as
+                    u64).wrapping_mul(vector_size(v) as u64) as i32;
 }
 
 /// Set element of vector v[i] to scalar s
-pub(crate) extern "C" fn set_vector_element(v: *mut Vector, i: i32, s: f64) -> () {
+pub(crate) extern "C" fn set_vector_element(v: *mut Vector, i: i32, s: f64)
+    -> () {
     assert((assert_vector(v) && i >= 0 && i < unsafe { (*v).cols }) as i32);
     unsafe { *unsafe { (*v).data.offset(i as isize) } = s };
 }
@@ -148,93 +130,71 @@ pub(crate) extern "C" fn get_vector_element(v: *mut Vector, i: i32) -> f64 {
 }
 
 /// "Pretty" print vector v
-pub(crate) extern "C" fn print_vector(v: *mut Vector, include_indices: bool) -> () {
+pub(crate) extern "C" fn print_vector(v: *mut Vector, include_indices: bool)
+    -> () {
     assert_vector(v);
     {
         let mut i: i32 = 0;
         '__b73: loop {
-            if !(i < unsafe { (*v).cols }) {
-                break '__b73;
-            }
+            if !(i < unsafe { (*v).cols }) { break '__b73; }
             '__c73: loop {
                 if include_indices {
-                    unsafe { printf(c"[%d] -> ".as_ptr() as *mut i8 as *const i8, i) };
+                    unsafe {
+                        printf(c"[%d] -> ".as_ptr() as *mut i8 as *const i8, i)
+                    };
                 }
                 unsafe {
-                    printf(c"%16.8f ".as_ptr() as *mut i8 as *const i8, unsafe {
-                        *unsafe { (*v).data.offset(i as isize) }
-                    })
+                    printf(c"%16.8f ".as_ptr() as *mut i8 as *const i8,
+                        unsafe { *unsafe { (*v).data.offset(i as isize) } })
                 };
                 break '__c73;
             }
-            {
-                let __p = &mut i;
-                let __t = *__p;
-                *__p += 1;
-                __t
-            };
+            i += 1;
         }
     }
 }
 
 /// Vectors v and w are equal if they contain identical elements
-pub(crate) extern "C" fn is_vector_equal(v: *mut Vector, w: *mut Vector) -> bool {
+pub(crate) extern "C" fn is_vector_equal(v: *mut Vector, w: *mut Vector)
+    -> bool {
     assert((assert_vector(v) && assert_vector(w)) as i32);
-    if unsafe { (*v).cols } != unsafe { (*w).cols } {
-        return 0;
-    }
+    if unsafe { (*v).cols } != unsafe { (*w).cols } { return 0; }
     {
         let mut i: i32 = 0;
         '__b74: loop {
-            if !(i < unsafe { (*v).cols }) {
-                break '__b74;
-            }
+            if !(i < unsafe { (*v).cols }) { break '__b74; }
             '__c74: loop {
-                if unsafe { *unsafe { (*v).data.offset(i as isize) } }
-                    != unsafe { *unsafe { (*w).data.offset(i as isize) } }
-                {
+                if unsafe { *unsafe { (*v).data.offset(i as isize) } } !=
+                        unsafe { *unsafe { (*w).data.offset(i as isize) } } {
                     return 0;
                 }
                 break '__c74;
             }
-            {
-                let __p = &mut i;
-                let __t = *__p;
-                *__p += 1;
-                __t
-            };
+            i += 1;
         }
     }
     return 1;
 }
 
 /// Return new vector as sum of vectors v1 and v2
-pub(crate) extern "C" fn add_vectors(v: *mut Vector, w: *mut Vector) -> *mut Vector {
-    assert(
-        (assert_vector(v) && assert_vector(w) && unsafe { (*v).cols } == unsafe { (*w).cols })
-            as i32,
-    );
+pub(crate) extern "C" fn add_vectors(v: *mut Vector, w: *mut Vector)
+    -> *mut Vector {
+    assert((assert_vector(v) && assert_vector(w) &&
+                unsafe { (*v).cols } == unsafe { (*w).cols }) as i32);
     let sum: *mut Vector = null_vector(unsafe { (*v).cols });
     {
         let mut i: i32 = 0;
         '__b75: loop {
-            if !(i < unsafe { (*v).cols }) {
-                break '__b75;
-            }
+            if !(i < unsafe { (*v).cols }) { break '__b75; }
             '__c75: loop {
                 unsafe {
                     *unsafe { (*sum).data.offset(i as isize) } =
-                        unsafe { *unsafe { (*v).data.offset(i as isize) } }
-                            + unsafe { *unsafe { (*w).data.offset(i as isize) } }
+                        unsafe { *unsafe { (*v).data.offset(i as isize) } } +
+                            unsafe { *unsafe { (*w).data.offset(i as isize) } }
                 };
                 break '__c75;
             }
-            {
-                let __p = &mut i;
-                let __t = *__p;
-                *__p += 1;
-                __t
-            };
+            i += 1;
         }
     }
     return sum;
@@ -247,22 +207,17 @@ pub(crate) extern "C" fn pow_vector(v: *mut Vector, k: f64) -> *mut Vector {
     {
         let mut i: i32 = 0;
         '__b76: loop {
-            if !(i < unsafe { (*v).cols }) {
-                break '__b76;
-            }
+            if !(i < unsafe { (*v).cols }) { break '__b76; }
             '__c76: loop {
                 unsafe {
                     *unsafe { (*p).data.offset(i as isize) } =
-                        unsafe { pow(unsafe { *unsafe { (*v).data.offset(i as isize) } }, k) }
+                        unsafe {
+                            pow(unsafe { *unsafe { (*v).data.offset(i as isize) } }, k)
+                        }
                 };
                 break '__c76;
             }
-            {
-                let __p = &mut i;
-                let __t = *__p;
-                *__p += 1;
-                __t
-            };
+            i += 1;
         }
     }
     return p;
@@ -270,62 +225,51 @@ pub(crate) extern "C" fn pow_vector(v: *mut Vector, k: f64) -> *mut Vector {
 
 /// Return scalar as dot product of vectors v1 and v2 (Euclidean inner product)
 pub(crate) extern "C" fn dot_product(v: *mut Vector, w: *mut Vector) -> f64 {
-    assert(
-        (assert_vector(v) && assert_vector(w) && unsafe { (*v).cols } == unsafe { (*w).cols })
-            as i32,
-    );
+    assert((assert_vector(v) && assert_vector(w) &&
+                unsafe { (*v).cols } == unsafe { (*w).cols }) as i32);
     let mut dp: f64 = 0 as f64;
     {
         let mut i: i32 = 0;
         '__b77: loop {
-            if !(i < unsafe { (*v).cols }) {
-                break '__b77;
-            }
+            if !(i < unsafe { (*v).cols }) { break '__b77; }
             '__c77: loop {
-                dp += unsafe { *unsafe { (*v).data.offset(i as isize) } }
-                    * unsafe { *unsafe { (*w).data.offset(i as isize) } };
+                dp +=
+                    unsafe { *unsafe { (*v).data.offset(i as isize) } } *
+                        unsafe { *unsafe { (*w).data.offset(i as isize) } };
                 break '__c77;
             }
-            {
-                let __p = &mut i;
-                let __t = *__p;
-                *__p += 1;
-                __t
-            };
+            i += 1;
         }
     }
     return dp;
 }
 
 /// Return new vector as cross product of vectors v1 and v2 (3 dimensions)
-pub(crate) extern "C" fn cross_product(v: *mut Vector, w: *mut Vector) -> *mut Vector {
-    assert(
-        (assert_vector(v)
-            && assert_vector(w)
-            && unsafe { (*v).cols } == 3
-            && unsafe { (*v).cols } == 3) as i32,
-    );
+pub(crate) extern "C" fn cross_product(v: *mut Vector, w: *mut Vector)
+    -> *mut Vector {
+    assert((assert_vector(v) && assert_vector(w) && unsafe { (*v).cols } == 3
+                && unsafe { (*v).cols } == 3) as i32);
     let c: *mut Vector = null_vector(3);
     unsafe {
         *unsafe { (*c).data.offset(0 as isize) } =
-            unsafe { *unsafe { (*v).data.offset(1 as isize) } }
-                * unsafe { *unsafe { (*w).data.offset(2 as isize) } }
-                - unsafe { *unsafe { (*v).data.offset(2 as isize) } }
-                    * unsafe { *unsafe { (*w).data.offset(1 as isize) } }
+            unsafe { *unsafe { (*v).data.offset(1 as isize) } } *
+                    unsafe { *unsafe { (*w).data.offset(2 as isize) } } -
+                unsafe { *unsafe { (*v).data.offset(2 as isize) } } *
+                    unsafe { *unsafe { (*w).data.offset(1 as isize) } }
     };
     unsafe {
         *unsafe { (*c).data.offset(1 as isize) } =
-            unsafe { *unsafe { (*v).data.offset(0 as isize) } }
-                * unsafe { *unsafe { (*w).data.offset(2 as isize) } }
-                - unsafe { *unsafe { (*v).data.offset(2 as isize) } }
-                    * unsafe { *unsafe { (*w).data.offset(0 as isize) } }
+            unsafe { *unsafe { (*v).data.offset(0 as isize) } } *
+                    unsafe { *unsafe { (*w).data.offset(2 as isize) } } -
+                unsafe { *unsafe { (*v).data.offset(2 as isize) } } *
+                    unsafe { *unsafe { (*w).data.offset(0 as isize) } }
     };
     unsafe {
         *unsafe { (*c).data.offset(2 as isize) } =
-            unsafe { *unsafe { (*v).data.offset(0 as isize) } }
-                * unsafe { *unsafe { (*w).data.offset(1 as isize) } }
-                - unsafe { *unsafe { (*v).data.offset(1 as isize) } }
-                    * unsafe { *unsafe { (*w).data.offset(0 as isize) } }
+            unsafe { *unsafe { (*v).data.offset(0 as isize) } } *
+                    unsafe { *unsafe { (*w).data.offset(1 as isize) } } -
+                unsafe { *unsafe { (*v).data.offset(1 as isize) } } *
+                    unsafe { *unsafe { (*w).data.offset(0 as isize) } }
     };
     return c;
 }
@@ -337,51 +281,38 @@ pub(crate) extern "C" fn vector_magnitude(v: *mut Vector) -> f64 {
     {
         let mut i: i32 = 0;
         '__b78: loop {
-            if !(i < unsafe { (*v).cols }) {
-                break '__b78;
-            }
+            if !(i < unsafe { (*v).cols }) { break '__b78; }
             '__c78: loop {
-                sum += unsafe { *unsafe { (*v).data.offset(i as isize) } }
-                    * unsafe { *unsafe { (*v).data.offset(i as isize) } };
+                sum +=
+                    unsafe { *unsafe { (*v).data.offset(i as isize) } } *
+                        unsafe { *unsafe { (*v).data.offset(i as isize) } };
                 break '__c78;
             }
-            {
-                let __p = &mut i;
-                let __t = *__p;
-                *__p += 1;
-                __t
-            };
+            i += 1;
         }
     }
     return unsafe { sqrt(sum) };
 }
 
 /// Return scalar as euclidean distance between vectors v1 and v2
-pub(crate) extern "C" fn vector_distance(v: *mut Vector, w: *mut Vector) -> f64 {
-    assert(
-        (assert_vector(v) && assert_vector(w) && unsafe { (*v).cols } == unsafe { (*w).cols })
-            as i32,
-    );
+pub(crate) extern "C" fn vector_distance(v: *mut Vector, w: *mut Vector)
+    -> f64 {
+    assert((assert_vector(v) && assert_vector(w) &&
+                unsafe { (*v).cols } == unsafe { (*w).cols }) as i32);
     let mut d: f64 = 0 as f64;
     {
         let mut i: i32 = 0;
         '__b79: loop {
-            if !(i < unsafe { (*v).cols }) {
-                break '__b79;
-            }
+            if !(i < unsafe { (*v).cols }) { break '__b79; }
             '__c79: loop {
-                d += (unsafe { *unsafe { (*w).data.offset(i as isize) } }
-                    - unsafe { *unsafe { (*v).data.offset(i as isize) } })
-                    * (unsafe { *unsafe { (*w).data.offset(i as isize) } }
-                        - unsafe { *unsafe { (*v).data.offset(i as isize) } });
+                d +=
+                    (unsafe { *unsafe { (*w).data.offset(i as isize) } } -
+                            unsafe { *unsafe { (*v).data.offset(i as isize) } }) *
+                        (unsafe { *unsafe { (*w).data.offset(i as isize) } } -
+                            unsafe { *unsafe { (*v).data.offset(i as isize) } });
                 break '__c79;
             }
-            {
-                let __p = &mut i;
-                let __t = *__p;
-                *__p += 1;
-                __t
-            };
+            i += 1;
         }
     }
     return unsafe { sqrt(d) };
@@ -394,9 +325,7 @@ pub(crate) extern "C" fn scale_vector(v: *mut Vector, s: f64) -> *mut Vector {
     {
         let mut i: i32 = 0;
         '__b80: loop {
-            if !(i < unsafe { (*v).cols }) {
-                break '__b80;
-            }
+            if !(i < unsafe { (*v).cols }) { break '__b80; }
             '__c80: loop {
                 unsafe {
                     *unsafe { (*scaled).data.offset(i as isize) } =
@@ -404,12 +333,7 @@ pub(crate) extern "C" fn scale_vector(v: *mut Vector, s: f64) -> *mut Vector {
                 };
                 break '__c80;
             }
-            {
-                let __p = &mut i;
-                let __t = *__p;
-                *__p += 1;
-                __t
-            };
+            i += 1;
         }
     }
     return scaled;
@@ -421,20 +345,16 @@ pub(crate) extern "C" fn is_unit_vector(v: *mut Vector) -> bool {
 }
 
 /// Vector v1 is orthogonal (perpendicular) to vector v2 if dotProduct(v1, v2) == 0
-pub(crate) extern "C" fn is_vector_orthogonal(v1: *mut Vector, v2: *mut Vector) -> bool {
+pub(crate) extern "C" fn is_vector_orthogonal(v1: *mut Vector,
+    v2: *mut Vector) -> bool {
     assert((assert_vector(v1) && assert_vector(v2)) as i32);
     return dot_product(v1, v2) == 0 as f64;
 }
 
 /// Return scalar of scalar triple product of vectors v1, v2, and v3
-pub(crate) extern "C" fn scalar_triple_product(
-    v1: *mut Vector,
-    v2: *mut Vector,
-    v3: *mut Vector,
-) -> f64 {
-    assert(
-        (unsafe { (*v1).cols } == 3 && unsafe { (*v2).cols } == 3 && unsafe { (*v3).cols } == 3)
-            as i32,
-    );
+pub(crate) extern "C" fn scalar_triple_product(v1: *mut Vector,
+    v2: *mut Vector, v3: *mut Vector) -> f64 {
+    assert((unsafe { (*v1).cols } == 3 && unsafe { (*v2).cols } == 3 &&
+                unsafe { (*v3).cols } == 3) as i32);
     return dot_product(v1, cross_product(v2, v3));
 }

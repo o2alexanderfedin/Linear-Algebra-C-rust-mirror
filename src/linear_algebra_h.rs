@@ -2,6 +2,7 @@ use super::*;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
+#[derive(Default)]
 pub(crate) struct Matrix {
     pub(crate) rows: i32,
     pub(crate) cols: i32,
@@ -10,6 +11,7 @@ pub(crate) struct Matrix {
 
 #[repr(C)]
 #[derive(Copy, Clone)]
+#[derive(Default)]
 pub(crate) struct Vector {
     pub(crate) _opaque: [u8; 0],
 }
